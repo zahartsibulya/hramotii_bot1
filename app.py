@@ -2,29 +2,52 @@ from flask import Flask, request, jsonify
 import requests
 import os
 
-app = Flask(__name__)  # <-- Це має бути до використання @app.route
+app = Flask(__name__)
 
 # 🔐 GPT (опційно)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+def search_wikipedia(query):
+    url = f"https://uk.wikipedia.org/api/rest_v1/page/summary/{query.replace(' ', '_')}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        return data.get("extract")
+    return None
+
+def ask_gpt(prompt):
+    if not OPENAI_API_KEY:
+        return None
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [{"role": "user", "content": prompt}]
+    }
+    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
+    if response.status_code == 200:
+        return response.json()["choices"][0]["message"]["content"]
+    return None
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     req = request.get_json()
     user_query = req["queryResult"]["queryText"]
 
-    # 1. Пошук у Wikipedia
+    # 1. Спроба знайти у Wikipedia
     wiki_result = search_wikipedia(user_query)
 
-    # 2. Якщо GPT доступний — сформулювати відповідь прямо з питання
-    if OPENAI_API_KEY:
-        if wiki_result:
-            prompt = f"Українською мовою, коротко і чітко поясни: {wiki_result}"
-        else:
-            prompt = f"Українською мовою, коротко і грамотно відповідай на питання: {user_query}"
-        gpt_answer = ask_gpt(prompt)
-        result = gpt_answer or wiki_result or "Вибач, я не зміг знайти відповідь."
+    # 2. Якщо GPT увімкнено, уточнити/переформулювати
+    if wiki_result and OPENAI_API_KEY:
+        refined_answer = ask_gpt(f"Сформулюй коротку й зрозумілу відповідь українською: {wiki_result}")
+        result = refined_answer or wiki_result
     else:
         result = wiki_result or "На жаль, я не знайшов точної відповіді."
 
-    print("🔁 Відповідь:", result)  # для логів
-
     return jsonify({"fulfillmentText": result})
+
+# Для локального запуску (опціонально)
+if __name__ == "__main__":
+    app.run(debug=True)
