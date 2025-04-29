@@ -1,50 +1,75 @@
 from flask import Flask, request, jsonify
+import openai
+import wikipedia
 import requests
 import os
 
 app = Flask(__name__)
 
-# 🔐 GPT (опційно)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Налаштування API ключів
+openai.api_key = os.getenv("OPENAI_API_KEY")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
-def search_wikipedia(query):
-    url = f"https://uk.wikipedia.org/api/rest_v1/page/summary/{query.replace(' ', '_')}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        return data.get("extract")
-    return None
+# Wikipedia налаштування
+wikipedia.set_lang("uk")
 
-def ask_gpt(prompt):
-    if not OPENAI_API_KEY:
+def get_answer_from_wikipedia(query):
+    try:
+        page = wikipedia.page(query)
+        return page.summary[:1000]  # обмежимо довжину
+    except wikipedia.exceptions.PageError:
         return None
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "model": "gpt-3.5-turbo",
-        "messages": [{"role": "user", "content": prompt}]
-    }
-    response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data)
-    if response.status_code == 200:
-        return response.json()["choices"][0]["message"]["content"]
-    return None
+    except wikipedia.exceptions.DisambiguationError as e:
+        # Візьмемо перше запропоноване значення
+        try:
+            page = wikipedia.page(e.options[0])
+            return page.summary[:1000]
+        except:
+            return None
 
-app.route("/webhook", methods=["POST"])
+def get_answer_from_chatgpt(query):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # або gpt-4, якщо маєте доступ
+            messages=[
+                {"role": "system", "content": "Ти експерт з української мови."},
+                {"role": "user", "content": query}
+            ]
+        )
+        return response['choices'][0]['message']['content']
+    except Exception as e:
+        return "На жаль, не вдалося отримати відповідь від ChatGPT."
+
+def send_telegram_message(chat_id, text):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": text
+    }
+    requests.post(url, json=payload)
+
+@app.route("/webhook", methods=["POST"])
 def webhook():
-    req = request.get_json()
-    user_query = req["queryResult"]["queryText"]
+    data = request.get_json()
+    
+    try:
+        query = data["queryResult"]["queryText"]
+        chat_id = data["originalDetectIntentRequest"]["payload"]["data"]["message"]["chat"]["id"]
+    except KeyError:
+        return jsonify({"fulfillmentText": "Невідомий формат запиту."})
 
-    # 1. Спроба знайти у Wikipedia
-    wiki_result = search_wikipedia(user_query)
-
-    # 2. Якщо GPT увімкнено, уточнити/переформулювати
-    if wiki_result and OPENAI_API_KEY:
-        refined_answer = ask_gpt(f"Сформулюй коротку й зрозумілу відповідь українською: {wiki_result}")
-        result = refined_answer or wiki_result
+    # Пошук у Wikipedia
+    wiki_answer = get_answer_from_wikipedia(query)
+    
+    if wiki_answer:
+        answer = wiki_answer
     else:
-        result = wiki_result or "На жаль, я не знайшов точної відповіді."
+        answer = get_answer_from_chatgpt(query)
 
-    return jsonify({"fulfillmentText": result})
+    # Відправка у Telegram
+    send_telegram_message(chat_id, answer)
+    
+    return jsonify({"fulfillmentText": answer})
 
+if __name__ == "__main__":
+    app.run(port=5000)
