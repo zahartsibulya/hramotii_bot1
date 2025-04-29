@@ -1,3 +1,4 @@
 flask
+openai
+wikipedia
 requests
-gunicorn
