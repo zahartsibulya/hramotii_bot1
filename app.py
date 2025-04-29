@@ -48,6 +48,3 @@ def webhook():
 
     return jsonify({"fulfillmentText": result})
 
-# Для локального запуску (опціонально)
-if __name__ == "__main__":
-    app.run(debug=True)
