@@ -1,3 +1,11 @@
+from flask import Flask, request, jsonify
+import requests
+import os
+
+app = Flask(__name__)  # <-- Це має бути до використання @app.route
+
+# 🔐 GPT (опційно)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 @app.route("/webhook", methods=["POST"])
 def webhook():
     req = request.get_json()
