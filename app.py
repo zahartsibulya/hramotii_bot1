@@ -31,7 +31,7 @@ def ask_gpt(prompt):
         return response.json()["choices"][0]["message"]["content"]
     return None
 
-@app.route("/webhook", methods=["POST"])
+app.route("/webhook", methods=["POST"])
 def webhook():
     req = request.get_json()
     user_query = req["queryResult"]["queryText"]
