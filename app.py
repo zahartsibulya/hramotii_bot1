@@ -1,43 +1,42 @@
 from flask import Flask, request, jsonify
-import openai
 import wikipedia
-import os
+import re
 
 app = Flask(__name__)
 
-# Налаштування API ключів
-openai.api_key = os.getenv("My Test Key")
-
-# Wikipedia налаштування
+# Налаштування мови Вікіпедії
 wikipedia.set_lang("uk")
 
 def get_answer_from_wikipedia(query):
     try:
+        print(f"[LOG] Пошук у Вікіпедії: '{query}'")
         page = wikipedia.page(query)
-        return page.summary[:1000]  # обмежимо довжину
+        summary = page.summary[:1000]
+        print(f"[LOG] Знайдено сторінку: {page.title}")
+        return summary
     except wikipedia.exceptions.PageError:
+        print("[LOG] Сторінку не знайдено (PageError)")
         return None
     except wikipedia.exceptions.DisambiguationError as e:
+        print(f"[LOG] Дизамбігуація, спроба взяти перший варіант: {e.options[0]}")
         try:
             page = wikipedia.page(e.options[0])
             return page.summary[:1000]
         except:
             return None
-
-def get_answer_from_chatgpt(query):
-    try:
-        client = openai.OpenAI()  # новий клієнт (OpenAI >= 1.0)
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Ти експерт з української мови. Відповідай чітко, грамотно і по суті."},
-                {"role": "user", "content": query}
-            ]
-        )
-        return response.choices[0].message.content
     except Exception as e:
-        print("Помилка GPT:", e)
-        return "На жаль, не вдалося отримати відповідь від ChatGPT."
+        print(f"[ERROR] {e}")
+        return None
+
+def search_fallback(query):
+    # Пробуємо пошукати за ключовими словами, якщо основний пошук не спрацював
+    words = re.findall(r'\b\w{4,}\b', query)  # тільки слова довші за 3 літери
+    print(f"[LOG] Резервний пошук: {words}")
+    for word in words:
+        result = get_answer_from_wikipedia(word)
+        if result:
+            return result
+    return None
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -48,13 +47,17 @@ def webhook():
     except KeyError:
         return jsonify({"fulfillmentText": "Не вдалося розпізнати запит."})
 
-    print(f"Отримано запит: {query}")
+    print(f"[REQUEST] Отримано запит: '{query}'")
 
+    # Пошук у Вікіпедії
     answer = get_answer_from_wikipedia(query)
     if not answer:
-        answer = get_answer_from_chatgpt(query)
+        answer = search_fallback(query)
+    if not answer:
+        answer = "На жаль, я не знайшов інформації у Вікіпедії."
 
-    print(f"Відповідь: {answer}")
+    print(f"[RESPONSE] Відповідь: {answer[:100]}...\n")
+
     return jsonify({"fulfillmentText": answer})
 
 if __name__ == "__main__":
