@@ -1,12 +1,10 @@
 from flask import Flask, request, jsonify
-import openai
+from openai import OpenAI
 import wikipedia
 import os
 
-app = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# Налаштування API ключа
-openai.api_key = os.getenv("OPENAI_API_KEY")  # Має бути назва змінної середовища
+app = Flask(__name__)  # Flask додаток
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # OpenAI клієнт
 
 # Wikipedia мовні налаштування
 wikipedia.set_lang("uk")
@@ -31,7 +29,7 @@ def get_answer_from_wikipedia(query):
 
 def get_answer_from_chatgpt(query):
     try:
-        response = app.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Ти експерт з української мови. Відповідай чітко, грамотно і по суті."},
@@ -61,5 +59,5 @@ def webhook():
     print(f"Відповідь: {answer}")
     return jsonify({"fulfillmentText": answer})
 
-if __name__ == "__main__":  # Виправлено
+if __name__ == "__main__":
     app.run(port=5000)
