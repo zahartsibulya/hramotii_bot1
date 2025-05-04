@@ -6,7 +6,7 @@ import os
 app = Flask(__name__)
 
 # Налаштування API ключів
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("My Test Key")
 
 # Wikipedia налаштування
 wikipedia.set_lang("uk")
