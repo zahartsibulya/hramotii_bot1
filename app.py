@@ -3,7 +3,7 @@ import openai
 import wikipedia
 import os
 
-app = Flask(__name__)  # Виправлено
+app = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Налаштування API ключа
 openai.api_key = os.getenv("OPENAI_API_KEY")  # Має бути назва змінної середовища
@@ -31,14 +31,14 @@ def get_answer_from_wikipedia(query):
 
 def get_answer_from_chatgpt(query):
     try:
-        response = openai.ChatCompletion.create(
+        response = app.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Ти експерт з української мови. Відповідай чітко, грамотно і по суті."},
                 {"role": "user", "content": query}
             ]
         )
-        return response.choices[0].message["content"]
+        return response.choices[0].message.content
     except Exception as e:
         print("Помилка GPT:", e)
         return "На жаль, не вдалося отримати відповідь від ChatGPT."
