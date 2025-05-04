@@ -26,6 +26,10 @@ def get_answer_from_wikipedia(query):
 
 def get_answer_from_chatgpt(query):
     try:
+        prompt = f"""
+Ти — мовний експерт з української мови. Дай чітку, стислу і корисну відповідь на запит користувача.
+Запит: {query} """
+        
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
