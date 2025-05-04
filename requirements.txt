@@ -1,5 +1,5 @@
+gunicorn
 flask
 openai
 wikipedia
-gunicorn
 requests
