@@ -3,7 +3,7 @@ import openai
 import wikipedia
 import os
 
-app = Flask(name)
+app = Flask(__name__)
 
 # Налаштування API ключів
 openai.api_key = os.getenv("My Test Key")
