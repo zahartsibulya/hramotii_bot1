@@ -39,6 +39,7 @@ def get_answer_from_chatgpt(query):
         )
         return response['choices'][0]['message']['content']
     except Exception as e:
+        print("Помилка GPT:", e)
         return "На жаль, не вдалося отримати відповідь від ChatGPT."
 
 @app.route("/webhook", methods=["POST"])
