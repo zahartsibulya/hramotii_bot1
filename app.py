@@ -3,38 +3,42 @@ import openai
 import wikipedia
 import os
 
-app = Flask(__name__)
+app = Flask(__name__)  # Виправлено
 
-# Налаштування API ключів
-openai.api_key = os.getenv("My Test Key")
+# Налаштування API ключа
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Має бути назва змінної середовища
 
-# Wikipedia налаштування
+# Wikipedia мовні налаштування
 wikipedia.set_lang("uk")
 
 def get_answer_from_wikipedia(query):
     try:
         page = wikipedia.page(query)
-        return page.summary[:1000]  # обмежимо довжину
-    except wikipedia.exceptions.PageError:
-        return None
+        return page.summary[:1000]
     except wikipedia.exceptions.DisambiguationError as e:
         try:
             page = wikipedia.page(e.options[0])
             return page.summary[:1000]
-        except:
+        except Exception as ex:
+            print(f"Disambiguation Error Retry: {ex}")
             return None
+    except wikipedia.exceptions.PageError:
+        print("Page not found.")
+        return None
+    except Exception as e:
+        print(f"Помилка Wikipedia: {e}")
+        return None
 
 def get_answer_from_chatgpt(query):
     try:
-        client = openai.OpenAI()  # новий клієнт (OpenAI >= 1.0)
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Ти експерт з української мови. Відповідай чітко, грамотно і по суті."},
                 {"role": "user", "content": query}
             ]
         )
-        return response.choices[0].message.content
+        return response.choices[0].message["content"]
     except Exception as e:
         print("Помилка GPT:", e)
         return "На жаль, не вдалося отримати відповідь від ChatGPT."
@@ -57,5 +61,5 @@ def webhook():
     print(f"Відповідь: {answer}")
     return jsonify({"fulfillmentText": answer})
 
-if name == "main":
+if __name__ == "__main__":  # Виправлено
     app.run(port=5000)
