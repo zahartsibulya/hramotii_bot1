@@ -4,7 +4,7 @@ import wikipedia
 import os
 
 app = Flask(__name__)  # Flask додаток
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # OpenAI клієнт
+client = OpenAI(api_key=os.getenv("secret_key"))  # OpenAI клієнт
 
 # Wikipedia мовні налаштування
 wikipedia.set_lang("uk")
