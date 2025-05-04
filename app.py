@@ -26,18 +26,15 @@ def get_answer_from_wikipedia(query):
 
 def get_answer_from_chatgpt(query):
     try:
-        prompt = f"""
-Ти — мовний експерт з української мови. Дай чітку, стислу і корисну відповідь на запит користувача.
-Запит: {query} """
-        
-        response = openai.ChatCompletion.create(
+        client = openai.OpenAI()  # новий клієнт (OpenAI >= 1.0)
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Ти експерт з української мови. Відповідай грамотно, стисло, українською."},
-                {"role": "user", "content": f"Проаналізуй запит українською мовою та дай точну відповідь:\n{query}"}
+                {"role": "system", "content": "Ти експерт з української мови. Відповідай чітко, грамотно і по суті."},
+                {"role": "user", "content": query}
             ]
         )
-        return response['choices'][0]['message']['content']
+        return response.choices[0].message.content
     except Exception as e:
         print("Помилка GPT:", e)
         return "На жаль, не вдалося отримати відповідь від ChatGPT."
@@ -51,12 +48,13 @@ def webhook():
     except KeyError:
         return jsonify({"fulfillmentText": "Не вдалося розпізнати запит."})
 
-    # Отримаємо відповідь з Вікіпедії або GPT
+    print(f"Отримано запит: {query}")
+
     answer = get_answer_from_wikipedia(query)
     if not answer:
         answer = get_answer_from_chatgpt(query)
 
-    # Повертаємо відповідь назад до Dialogflow (і Telegram)
+    print(f"Відповідь: {answer}")
     return jsonify({"fulfillmentText": answer})
 
 if __name__ == "__main__":
