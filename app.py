@@ -33,8 +33,8 @@ def get_answer_from_chatgpt(query):
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Ти експерт з української мови."},
-                {"role": "user", "content": query}
+                {"role": "system", "content": "Ти експерт з української мови. Відповідай грамотно, стисло, українською."},
+                {"role": "user", "content": f"Проаналізуй запит українською мовою та дай точну відповідь:\n{query}"}
             ]
         )
         return response['choices'][0]['message']['content']
