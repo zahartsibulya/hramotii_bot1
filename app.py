@@ -1,12 +1,19 @@
 from flask import Flask, request, jsonify
-from openai import OpenAI
+from dotenv import load_dotenv
+import openai
 import wikipedia
 import os
 
-app = Flask(__name__)  # Flask додаток
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # OpenAI клієнт
+# Завантажити змінні з .env
+load_dotenv()
 
-# Wikipedia мовні налаштування
+# Створити Flask-додаток
+app = Flask(__name__)
+
+# Отримати ключ із змінного середовища
+openai.api_key = os.getenv("secret_key")
+
+# Встановити українську мову для Wikipedia
 wikipedia.set_lang("uk")
 
 def get_answer_from_wikipedia(query):
@@ -29,6 +36,7 @@ def get_answer_from_wikipedia(query):
 
 def get_answer_from_chatgpt(query):
     try:
+        client = openai.OpenAI()  # для openai >= 1.0
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
